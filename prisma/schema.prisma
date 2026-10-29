@@ -1,0 +1,447 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────
+
+enum LeadStatus {
+  nuevo
+  analizado
+  descartado
+  preparado_para_contactar
+  contactado
+  seguimiento_1
+  seguimiento_2
+  seguimiento_3
+  respondio
+  interesado
+  reunion_agendada
+  propuesta_pendiente
+  propuesta_enviada
+  negociacion
+  perdido
+  ganado
+}
+
+enum Semaforo {
+  verde
+  amarillo
+  rojo
+}
+
+enum RiesgoComercial {
+  bajo
+  medio
+  alto
+}
+
+enum Priority {
+  alta
+  media
+  baja
+}
+
+enum ProposalStatus {
+  borrador
+  pendiente_aprobacion
+  enviada
+  aceptada
+  rechazada
+}
+
+enum ProjectStage {
+  onboarding
+  requisitos
+  construccion
+  revision
+  entrega
+  mantenimiento
+}
+
+enum ProjectStatus {
+  activo
+  pausado
+  completado
+  cancelado
+}
+
+enum TaskStatus {
+  pendiente
+  en_progreso
+  completada
+  cancelada
+}
+
+enum TaskType {
+  aprobacion
+  accion
+  revision
+  llamada
+  seguimiento
+}
+
+enum AgentStatus {
+  activo
+  pausado
+  error
+  inactivo
+}
+
+enum AgentType {
+  prospeccion
+  analista
+  email_generator
+  seguimiento
+  comercial
+  calendario
+  propuestas
+  requisitos
+  constructor
+  qa
+  resumen_diario
+}
+
+enum EmailType {
+  enviado
+  recibido
+}
+
+enum EmailClassification {
+  positivo
+  negativo
+  neutro
+  pregunta
+  interes
+  precio
+  no_clasificado
+}
+
+enum CampaignStatus {
+  activa
+  pausada
+  completada
+  borrador
+}
+
+enum ActivityType {
+  email_enviado
+  email_recibido
+  estado_cambiado
+  nota_agregada
+  reunion_agendada
+  propuesta_creada
+  tarea_creada
+  agente_ejecutado
+  lead_creado
+  proyecto_creado
+  email_encontrado
+  semaforo_cambiado
+  riesgo_detectado
+  llamada_realizada
+}
+
+// ─── USER ────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  password  String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── LEAD ────────────────────────────────────────────────────────
+
+model Lead {
+  id                   String     @id @default(cuid())
+  nombre               String
+  sector               String?
+  ciudad               String     @default("Zaragoza")
+  web                  String?
+  email                String?
+  telefono             String?
+  fuente               String?
+  problemaDetectado    String?
+  servicioRecomendado  String?
+  puntuacion           Int?       @default(5)
+  prioridad            Priority        @default(media)
+  estado               LeadStatus      @default(nuevo)
+  semaforo             Semaforo        @default(verde)
+  riesgoComercial      RiesgoComercial @default(bajo)
+  seguimientoCount     Int             @default(0)
+  valorEstimado        Float?
+  emailPreparado       String?
+  emailEnviado         Boolean         @default(false)
+  fechaEnvio           DateTime?
+  respuestaRecibida    Boolean         @default(false)
+  resumenRespuesta     String?
+  clasificacionRespuesta EmailClassification?
+  borradorRespuesta    String?
+  borradorThreadId     String?
+  borradorMsgId        String?
+  notas                String?
+  notasLlamada         String?
+  proximaAccion        String?
+  campaniaId           String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  ultimoContactoEn     DateTime?
+
+  campania    Campania?   @relation(fields: [campaniaId], references: [id])
+  actividades Actividad[]
+  tareas      Tarea[]
+  propuestas  Propuesta[]
+  emails      Email[]
+  proyectos   Proyecto[]
+  reuniones   Reunion[]
+  documentos  Documento[]
+}
+
+// ─── EMPRESA ─────────────────────────────────────────────────────
+
+model Empresa {
+  id              String   @id @default(cuid())
+  nombre          String
+  sector          String?
+  ciudad          String?
+  web             String?
+  email           String?
+  telefono        String?
+  descripcion     String?
+  empleados       Int?
+  valorEstimado   Float?
+  estadoComercial String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  proyectos Proyecto[]
+}
+
+// ─── CAMPAÑA ─────────────────────────────────────────────────────
+
+model Campania {
+  id                  String         @id @default(cuid())
+  nombre              String
+  ciudadObjetivo      String         @default("Zaragoza")
+  sectorObjetivo      String?
+  limiteDiarioEmails  Int            @default(5)
+  autoEnvio           Boolean        @default(false)
+  estado              CampaignStatus @default(borrador)
+  leadsGenerados      Int            @default(0)
+  emailsEnviados      Int            @default(0)
+  respuestasRecibidas Int            @default(0)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  leads Lead[]
+}
+
+// ─── PROPUESTA ───────────────────────────────────────────────────
+
+model Propuesta {
+  id                String         @id @default(cuid())
+  leadId            String
+  servicioOfrecido  String
+  problemaDetectado String?
+  solucionPropuesta String?
+  precioEstimado    Float?
+  plazoEstimado     String?
+  estado            ProposalStatus @default(borrador)
+  version           Int            @default(1)
+  notas             String?
+  fechaEnvio        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  lead     Lead      @relation(fields: [leadId], references: [id])
+  proyecto Proyecto?
+}
+
+// ─── PROYECTO ────────────────────────────────────────────────────
+
+model Proyecto {
+  id                   String        @id @default(cuid())
+  nombre               String
+  leadId               String?
+  empresaId            String?
+  propuestaId          String?       @unique
+  servicioVendido      String
+  etapa                ProjectStage  @default(onboarding)
+  estado               ProjectStatus @default(activo)
+  progreso             Int           @default(0)
+  fichaRequisitos      Json?
+  datosPendientes      String?
+  entregables          Json?
+  bloqueos             String?
+  valorTotal           Float?
+  fechaInicio          DateTime      @default(now())
+  fechaEntregaEstimada DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  lead        Lead?       @relation(fields: [leadId], references: [id])
+  empresa     Empresa?    @relation(fields: [empresaId], references: [id])
+  propuesta   Propuesta?  @relation(fields: [propuestaId], references: [id])
+  tareas      Tarea[]
+  actividades Actividad[]
+  documentos  Documento[]
+}
+
+// ─── TAREA ───────────────────────────────────────────────────────
+
+model Tarea {
+  id          String     @id @default(cuid())
+  titulo      String
+  descripcion String?
+  prioridad   Priority   @default(media)
+  estado      TaskStatus @default(pendiente)
+  tipo        TaskType   @default(accion)
+  vencimiento DateTime?
+  origen      String?
+  leadId      String?
+  proyectoId  String?
+  propuestaId String?
+  metadata    Json?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  lead     Lead?     @relation(fields: [leadId], references: [id])
+  proyecto Proyecto? @relation(fields: [proyectoId], references: [id])
+}
+
+// ─── AGENTE ──────────────────────────────────────────────────────
+
+model Agente {
+  id                          String      @id @default(cuid())
+  nombre                      String
+  tipo                        AgentType   @unique
+  descripcion                 String
+  estado                      AgentStatus @default(inactivo)
+  ultimaEjecucion             DateTime?
+  configuracion               Json?
+  accionesPermitidas          Json?
+  accionesRequierenAprobacion Json?
+  createdAt                   DateTime    @default(now())
+  updatedAt                   DateTime    @updatedAt
+
+  logs        AgenteLog[]
+  actividades Actividad[]
+}
+
+model AgenteLog {
+  id        String   @id @default(cuid())
+  agenteId  String
+  nivel     String   @default("info")
+  mensaje   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  agente Agente @relation(fields: [agenteId], references: [id])
+}
+
+// ─── EMAIL ───────────────────────────────────────────────────────
+
+model Email {
+  id             String              @id @default(cuid())
+  leadId         String?
+  gmailMessageId String?             @unique
+  gmailThreadId  String?
+  tipo           EmailType
+  asunto         String?
+  cuerpo         String?
+  remitente      String?
+  destinatario   String?
+  leido          Boolean             @default(false)
+  clasificacion  EmailClassification @default(no_clasificado)
+  fecha          DateTime            @default(now())
+  createdAt      DateTime            @default(now())
+  trackingId     String?             @unique
+  abierto        Boolean             @default(false)
+  fechaApertura  DateTime?
+
+  lead Lead? @relation(fields: [leadId], references: [id])
+}
+
+// ─── REUNIÓN ─────────────────────────────────────────────────────
+
+model Reunion {
+  id            String   @id @default(cuid())
+  leadId        String?
+  googleEventId String?  @unique
+  titulo        String
+  descripcion   String?
+  fechaInicio   DateTime
+  fechaFin      DateTime
+  enlaceMeet    String?
+  estado        String   @default("confirmada")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lead Lead? @relation(fields: [leadId], references: [id])
+}
+
+// ─── ACTIVIDAD ───────────────────────────────────────────────────
+
+model Actividad {
+  id          String       @id @default(cuid())
+  tipo        ActivityType
+  descripcion String
+  metadata    Json?
+  leadId      String?
+  proyectoId  String?
+  agenteId    String?
+  createdAt   DateTime     @default(now())
+
+  lead     Lead?     @relation(fields: [leadId], references: [id])
+  proyecto Proyecto? @relation(fields: [proyectoId], references: [id])
+  agente   Agente?   @relation(fields: [agenteId], references: [id])
+}
+
+// ─── DOCUMENTO ───────────────────────────────────────────────────
+
+model Documento {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String?
+  categoria   String?
+  storagePath String
+  mimeType    String
+  tamano      Int
+  leadId      String?
+  proyectoId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lead     Lead?     @relation(fields: [leadId], references: [id])
+  proyecto Proyecto? @relation(fields: [proyectoId], references: [id])
+}
+
+// ─── MEJORAS ─────────────────────────────────────────────────────
+
+model Mejora {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String
+  prioridad   String   @default("media")
+  estado      String   @default("pendiente")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── CONFIGURACIÓN ───────────────────────────────────────────────
+
+model Configuracion {
+  id          String   @id @default(cuid())
+  clave       String   @unique
+  valor       String
+  tipo        String   @default("string")
+  descripcion String?
+  updatedAt   DateTime @updatedAt
+}
